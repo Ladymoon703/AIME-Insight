@@ -1,7 +1,8 @@
 import EChart from "@/components/charts/EChart";
 import { buildFinancialLineChart } from "@/lib/charts";
 import type { ResearchResult, Evidence } from "@/lib/types";
-import { EvidenceItem, SourceNote, evNum, fmtPct } from "./helpers";
+import { SourceNote, evNum, fmtPct } from "./helpers";
+import EvidenceItem from "./EvidenceItem";
 
 export default function FinancialSection({
   financial,

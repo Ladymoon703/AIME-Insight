@@ -1,5 +1,6 @@
 import type { ResearchResult } from "@/lib/types";
-import { EvidenceItem, evNum, fmtPct } from "./helpers";
+import { evNum, fmtPct } from "./helpers";
+import EvidenceItem from "./EvidenceItem";
 
 export default function ProfitQualitySection({
   evidence,

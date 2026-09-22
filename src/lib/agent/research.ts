@@ -11,10 +11,9 @@ import {
   calculateMaxDrawdown,
   calculateVolatility,
   calculateTrend,
-  calculateNetProfitCashContent,
 } from "@/lib/engine/metrics";
 import { createEvidence, detectDivergence, sourceName } from "@/lib/engine/evidence";
-import { interpret } from "@/lib/agent/interpret";
+import { runInterpreter, buildDeepAnalysis, type InterpreterInput } from "@/lib/llm/interpreter";
 import type {
   Company,
   ResearchResult,
@@ -147,10 +146,6 @@ export async function runResearch(input: {
   const volatilityPct = calculateVolatility(closes);
   const netProfitTrend = calculateTrend(periods.map((p) => p.netProfit));
   const cashFlowTrend = calculateTrend(periods.map((p) => p.actCashFlowNet));
-  const cashContent = calculateNetProfitCashContent(
-    periods.length > 0 ? periods[periods.length - 1].actCashFlowNet : null,
-    periods.length > 0 ? periods[periods.length - 1].netProfit : null,
-  );
 
   const latestPeriod =
     periods.length > 0 ? labelPeriod(periods[periods.length - 1]) : null;
@@ -194,34 +189,17 @@ export async function runResearch(input: {
     evidence,
   });
 
-  // ---- 7. 解释（模板 / Phase 4 换 LLM） ----
-  const interpretation = interpret({
-    companyName: company.name,
-    dataMode: ds.mode,
-    revenueYoY: ind.revenueYoY,
-    netProfitYoY: ind.netProfitYoY,
-    cashFlowYoY: ind.cashFlowYoY,
-    netProfitCashContent: cashContent,
-    grossMargin: ind.grossMargin,
-    netMargin: ind.netMargin,
-    roe: ind.roe,
-    peTtm: valRes?.data?.peTtm ?? null,
-    pbMrq: valRes?.data?.pbMrq ?? null,
-    priceReturnPct,
-    maxDrawdownPct,
-    volatilityPct,
-    peerCount: peerRes?.data?.length ?? 0,
-    evidenceIds: {
-      positive: evidence.positive.map((e) => e.id),
-      negative: evidence.negative.map((e) => e.id),
-      contradictory: evidence.contradictory.map((e) => e.id),
-      unknown: evidence.unknown.map((e) => e.id),
-    },
-    hasValuation: valRes?.data != null,
-    hasIndustry: (peerRes?.data?.length ?? 0) > 1,
-    hasEvents: (eventRes?.data?.length ?? 0) > 0,
-    hasFinancials: periods.length > 0,
-  });
+  // ---- 7. LLM 解释（Evidence → 自然语言；未配置/失败时降级模板） ----
+  const interpreterInput: InterpreterInput = {
+    company,
+    researchGoal: goal,
+    timeWindow,
+    currentState,
+    evidence: evidence.facts,
+    keyQuestions: buildOpenQuestions({ ind, divergence, hasValuation: valRes?.data != null }),
+  };
+  const interpretation = await runInterpreter(interpreterInput);
+  const deepAnalysis = buildDeepAnalysis(interpretation.output, evidence.facts);
 
   // ---- 8. 图表数据 ----
   const financial = periods.length > 0 ? buildFinancialData(periods) : null;
@@ -291,13 +269,16 @@ export async function runResearch(input: {
           nextActions: ["验证盈利质量", "查看同行比较", "查看事件与风险"],
         }
       : null,
-    summary: interpretation.summary,
-    deepAnalysis: interpretation.deepAnalysis,
+    summary: interpretation.output.summary,
+    deepAnalysis,
     nextActions: buildNextActions({ dims, divergence }),
     openQuestions: buildOpenQuestions({ ind, divergence, hasValuation: valRes?.data != null }),
+    nextQuestions: interpretation.output.nextQuestions,
+    dimensionInsights: interpretation.output.dimensionInsights,
+    stateUpdate: interpretation.output.stateUpdate,
     sources,
     dataStatus,
-    llmMode: "template",
+    llmMode: interpretation.mode,
   };
 }
 

@@ -11,6 +11,7 @@ import EventsSection from "@/components/research/EventsSection";
 import EvidenceBoard from "@/components/research/EvidenceBoard";
 import DeepAnalysisSection from "@/components/research/DeepAnalysisSection";
 import NextActions from "@/components/research/NextActions";
+import { EvidenceDrawerProvider } from "@/components/research/EvidenceDrawer";
 import { runResearch } from "@/lib/agent/research";
 import { resolveByThscode } from "@/lib/agent/planner";
 
@@ -44,7 +45,7 @@ export default async function ResearchPage({
   const source = result.sources[0]?.name ?? "";
 
   return (
-    <>
+    <EvidenceDrawerProvider>
       <DataModeBanner />
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
         <CompanyHeader
@@ -58,7 +59,20 @@ export default async function ResearchPage({
 
         {result.summary && (
           <section className="rounded-xl border border-black/5 bg-white p-5">
-            <h2 className="text-lg font-semibold">AI 研究摘要</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">AI 研究摘要</h2>
+              <span
+                className={`rounded px-2 py-0.5 text-xs ${
+                  result.llmMode === "live"
+                    ? "bg-accent-soft text-accent"
+                    : "bg-zinc-100 text-zinc-500"
+                }`}
+              >
+                {result.llmMode === "live"
+                  ? "由 DeepSeek 生成"
+                  : "模板解释（未连接模型）"}
+              </span>
+            </div>
             <p className="mt-2 text-sm leading-6 text-zinc-600">{result.summary}</p>
           </section>
         )}
@@ -111,14 +125,28 @@ export default async function ResearchPage({
         <div id="evidence-board">
           <EvidenceBoard
             evidence={result.evidence}
-            conclusion={result.deepAnalysis?.coreConclusion ?? null}
+            conclusion={result.stateUpdate?.conclusion ?? result.deepAnalysis?.coreConclusion ?? null}
           />
         </div>
 
         <DeepAnalysisSection deepAnalysis={result.deepAnalysis} />
 
+        {result.nextQuestions.length > 0 && (
+          <section className="rounded-xl border border-black/5 bg-white p-5">
+            <h2 className="text-lg font-semibold">下一步值得验证的问题</h2>
+            <ul className="mt-3 space-y-2">
+              {result.nextQuestions.map((q) => (
+                <li key={q} className="flex items-start gap-2 text-sm text-zinc-700">
+                  <span className="mt-0.5 text-accent">?</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <NextActions actions={result.nextActions} thscode={thscode} />
       </div>
-    </>
+    </EvidenceDrawerProvider>
   );
 }

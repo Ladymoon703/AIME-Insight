@@ -175,6 +175,8 @@ export interface ContradictionResult {
 export interface DeepAnalysisSection {
   title: string;
   content: string;
+  /** 该段文字引用的证据 id */
+  evidenceIds: string[];
 }
 
 export interface DeepAnalysis {
@@ -182,6 +184,25 @@ export interface DeepAnalysis {
   sections: DeepAnalysisSection[];
   /** 关联证据 id，用于可点击钻取 */
   evidenceIds: string[];
+}
+
+/** 单个研究维度的 LLM 洞察（statement 必须关联到 evidence id） */
+export interface DimensionInsight {
+  dimension: string;
+  status: DimensionStatus;
+  statement: string;
+  supportingEvidenceIds: string[];
+  opposingEvidenceIds: string[];
+  unknownEvidenceIds: string[];
+}
+
+/** Research State 的自然语言更新（核心事实来自 Evidence） */
+export interface StateUpdate {
+  conclusion: string;
+  positiveSummary: string;
+  negativeSummary: string;
+  contradictorySummary: string;
+  unknownSummary: string;
 }
 
 export interface SourceInfo {
@@ -225,6 +246,9 @@ export interface ResearchResult {
   deepAnalysis: DeepAnalysis | null;
   nextActions: string[];
   openQuestions: string[];
+  nextQuestions: string[];
+  dimensionInsights: DimensionInsight[];
+  stateUpdate: StateUpdate | null;
   sources: SourceInfo[];
   dataStatus: DataStatus[];
   llmMode: "live" | "template";

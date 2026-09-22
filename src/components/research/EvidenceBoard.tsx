@@ -1,5 +1,5 @@
 import type { ResearchResult, Evidence } from "@/lib/types";
-import { EvidenceItem } from "./helpers";
+import EvidenceItem from "./EvidenceItem";
 
 export default function EvidenceBoard({
   evidence,
