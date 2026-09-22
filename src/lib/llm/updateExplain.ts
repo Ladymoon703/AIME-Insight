@@ -5,6 +5,7 @@
  */
 import { deepSeekChat } from "./deepseek";
 import { hasDeepSeekKey } from "@/lib/config";
+import { roundValue } from "./format";
 import { templateUpdateSummary, type ResearchChange } from "@/lib/agent/update";
 
 export async function explainUpdate(input: {
@@ -21,8 +22,14 @@ export async function explainUpdate(input: {
       `公司：${input.companyName}`,
       `旧结论：${input.oldConclusion}`,
       `新结论：${input.newConclusion}`,
-      "确定性比较得到的变化（只解释这些，不编造新数据）：",
-      JSON.stringify(input.changes),
+      "确定性比较得到的变化（只解释这些，不编造新数据，数值已四舍五入）：",
+      JSON.stringify(
+        input.changes.map((c) => ({
+          ...c,
+          oldValue: roundValue(c.oldValue),
+          newValue: roundValue(c.newValue),
+        })),
+      ),
       "请用 3-6 句中文说明：这些变化意味着什么、对原有研究结论有什么影响、下一步应该研究什么。不输出买卖建议或涨跌预测。",
     ].join("\n");
     const content = await deepSeekChat(

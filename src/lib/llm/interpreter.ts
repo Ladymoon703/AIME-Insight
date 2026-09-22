@@ -7,6 +7,7 @@
 import { deepSeekChat } from "./deepseek";
 import { hasDeepSeekKey } from "@/lib/config";
 import { parseAndValidate, templateInterpret } from "./validate";
+import { roundEvidenceForPrompt } from "./format";
 import type { InterpreterInput, InterpreterResult } from "./schema";
 
 // 重新导出，供 Research Runner 与测试使用
@@ -44,8 +45,8 @@ function userPrompt(input: InterpreterInput): string {
     "关键问题：" + JSON.stringify(input.keyQuestions),
     "当前研究状态：" + JSON.stringify(input.currentState),
     "",
-    "可用 Evidence（只能引用这些，不能创造新的）：",
-    JSON.stringify(input.evidence),
+    "可用 Evidence（只能引用这些，不能创造新的，数值已四舍五入到 2 位小数）：",
+    JSON.stringify(roundEvidenceForPrompt(input.evidence)),
     "",
     "输出 JSON schema（必须严格符合，evidenceIds 只能填上述 Evidence 的 id）：",
     JSON.stringify({
