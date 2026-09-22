@@ -2,8 +2,10 @@ import Link from "next/link";
 import DataModeBanner from "@/components/DataModeBanner";
 import ReRunSection from "@/components/research/ReRunSection";
 import {
+  getResearch,
   getResearchVersions,
   getLatestSnapshot,
+  listResearches,
 } from "@/lib/store/researchStore";
 import { statusMeta } from "@/lib/ui";
 
@@ -18,14 +20,26 @@ function fmtDate(iso: string): string {
 
 export default async function HistoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ thscode: string }>;
+  searchParams: Promise<{ researchId?: string }>;
 }) {
   const { thscode } = await params;
-  const latest = getLatestSnapshot(thscode);
-  const versions = getResearchVersions(thscode);
+  const sp = await searchParams;
 
-  if (!latest || versions.length === 0) {
+  // 优先使用 searchParams 里的 researchId；否则回退到该 thscode 的最新 research
+  let researchId = sp.researchId;
+  if (!researchId) {
+    const list = listResearches().filter((r) => r.thscode === thscode);
+    researchId = list[0]?.researchId;
+  }
+
+  const research = researchId ? getResearch(researchId) : null;
+  const latest = researchId ? getLatestSnapshot(researchId) : null;
+  const versions = researchId ? getResearchVersions(researchId) : [];
+
+  if (!research || !latest || versions.length === 0) {
     return (
       <>
         <DataModeBanner />
@@ -52,8 +66,9 @@ export default async function HistoryPage({
       <div className="mx-auto max-w-4xl px-4 py-10">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-zinc-400">{latest.company.thscode}</div>
-            <h1 className="text-2xl font-semibold">{latest.company.name}</h1>
+            <div className="text-xs text-zinc-400">{research.thscode}</div>
+            <h1 className="text-2xl font-semibold">{research.companyName}</h1>
+            <p className="mt-1 text-sm text-zinc-500">{research.researchGoal}</p>
           </div>
           <Link
             href={`/research/${thscode}`}
@@ -70,7 +85,6 @@ export default async function HistoryPage({
               最新版本 v{versions[0].version}
             </span>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">{latest.researchGoal}</p>
           {conclusion && (
             <p className="mt-3 text-sm font-medium text-zinc-800">{conclusion}</p>
           )}
@@ -92,7 +106,7 @@ export default async function HistoryPage({
         </div>
 
         <div className="mt-4">
-          <ReRunSection thscode={thscode} />
+          <ReRunSection researchId={research.id} />
         </div>
 
         <div className="mt-8">

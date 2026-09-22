@@ -1,19 +1,13 @@
 /**
  * Research / Research State / Research Version 持久化。
+ * Research 不按 thscode 唯一：同一公司可有多个研究任务（按 research_goal 区分）。
  * Evidence Snapshot 不可变：版本快照以 JSON 字符串保存，永不 UPDATE，只 INSERT 新版本。
  */
 import { getDb, newId, now } from "./db.ts";
 import type { ResearchResult, CurrentStateItem } from "@/lib/types";
 
-export interface ResearchVersionRow {
-  id: string;
-  researchId: string;
-  version: number;
-  createdAt: string;
-  snapshot: ResearchResult;
-}
-
 export interface ResearchListItem {
+  researchId: string;
   thscode: string;
   ticker: string;
   companyName: string;
@@ -22,6 +16,11 @@ export interface ResearchListItem {
   updatedAt: string;
   version: number;
   latest: ResearchResult;
+}
+
+function normalizeGoal(goal: string): string {
+  const g = (goal ?? "").trim();
+  return g.length > 0 ? g : "公司快速研究";
 }
 
 /** 校验 ResearchResult 结构，并拒绝非法 Evidence ID 写入 */
@@ -65,27 +64,31 @@ export function saveResearch(result: ResearchResult): {
   const db = getDb();
   const ts = now();
   const snapshot = JSON.stringify(result);
+  const thscode = result.company.thscode;
+  const goal = normalizeGoal(result.researchGoal);
 
-  // upsert research（按 thscode 唯一）
+  // 同一 thscode + 相同 research_goal → 同一 Research（新增版本）
+  // 不同 research_goal → 新建 Research
   const existing = db
-    .prepare("SELECT id FROM researches WHERE thscode = ?")
-    .get(result.company.thscode) as { id: string } | undefined;
+    .prepare("SELECT id FROM researches WHERE thscode = ? AND research_goal = ?")
+    .get(thscode, goal) as { id: string } | undefined;
+
   let researchId: string;
   if (existing) {
     researchId = existing.id;
     db.prepare(
-      "UPDATE researches SET research_goal = ?, time_window = ?, updated_at = ? WHERE id = ?",
-    ).run(result.researchGoal, result.timeWindow, ts, researchId);
+      "UPDATE researches SET time_window = ?, updated_at = ? WHERE id = ?",
+    ).run(result.timeWindow, ts, researchId);
   } else {
     researchId = newId();
     db.prepare(
       "INSERT INTO researches (id, thscode, company_name, ticker, research_goal, time_window, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     ).run(
       researchId,
-      result.company.thscode,
+      thscode,
       result.company.name,
       result.company.ticker,
-      result.researchGoal,
+      goal,
       result.timeWindow,
       ts,
       ts,
@@ -123,9 +126,10 @@ export function listResearches(): ResearchListItem[] {
 
   return rows
     .map((r) => {
-      const latest = getLatestSnapshot(r.thscode);
+      const latest = getLatestSnapshot(r.id);
       if (!latest) return null;
       return {
+        researchId: r.id,
         thscode: r.thscode,
         ticker: r.ticker,
         companyName: r.company_name,
@@ -147,7 +151,32 @@ function getVersionCount(researchId: string): number {
   return row.c;
 }
 
-export function getResearchVersions(thscode: string): Array<{
+export interface ResearchSummary {
+  id: string;
+  thscode: string;
+  companyName: string;
+  researchGoal: string;
+  timeWindow: string;
+}
+
+export function getResearch(researchId: string): ResearchSummary | null {
+  const db = getDb();
+  const r = db
+    .prepare("SELECT id, thscode, company_name, research_goal, time_window FROM researches WHERE id = ?")
+    .get(researchId) as
+    | { id: string; thscode: string; company_name: string; research_goal: string; time_window: string }
+    | undefined;
+  if (!r) return null;
+  return {
+    id: r.id,
+    thscode: r.thscode,
+    companyName: r.company_name,
+    researchGoal: r.research_goal,
+    timeWindow: r.time_window,
+  };
+}
+
+export function getResearchVersions(researchId: string): Array<{
   id: string;
   version: number;
   createdAt: string;
@@ -155,15 +184,11 @@ export function getResearchVersions(thscode: string): Array<{
   currentState: CurrentStateItem[];
 }> {
   const db = getDb();
-  const research = db
-    .prepare("SELECT id FROM researches WHERE thscode = ?")
-    .get(thscode) as { id: string } | undefined;
-  if (!research) return [];
   const rows = db
     .prepare(
       "SELECT id, version, snapshot, created_at FROM research_versions WHERE research_id = ? ORDER BY version DESC",
     )
-    .all(research.id) as Array<{
+    .all(researchId) as Array<{
     id: string;
     version: number;
     snapshot: string;
@@ -191,35 +216,27 @@ export function getVersionSnapshot(versionId: string): ResearchResult | null {
   return JSON.parse(row.snapshot) as ResearchResult;
 }
 
-export function getLatestSnapshot(thscode: string): ResearchResult | null {
+export function getLatestSnapshot(researchId: string): ResearchResult | null {
   const db = getDb();
-  const research = db
-    .prepare("SELECT id FROM researches WHERE thscode = ?")
-    .get(thscode) as { id: string } | undefined;
-  if (!research) return null;
   const row = db
     .prepare(
       "SELECT snapshot FROM research_versions WHERE research_id = ? ORDER BY version DESC LIMIT 1",
     )
-    .get(research.id) as { snapshot: string } | undefined;
+    .get(researchId) as { snapshot: string } | undefined;
   if (!row) return null;
   return JSON.parse(row.snapshot) as ResearchResult;
 }
 
-/** 获取指定 thscode 最新的两个版本快照（用于比较） */
+/** 获取指定 researchId 最新的两个版本快照（用于比较） */
 export function getLastTwoSnapshots(
-  thscode: string,
+  researchId: string,
 ): { old: ResearchResult | null; new: ResearchResult | null; oldAt: string; newAt: string } {
   const db = getDb();
-  const research = db
-    .prepare("SELECT id FROM researches WHERE thscode = ?")
-    .get(thscode) as { id: string } | undefined;
-  if (!research) return { old: null, new: null, oldAt: "", newAt: "" };
   const rows = db
     .prepare(
       "SELECT snapshot, created_at FROM research_versions WHERE research_id = ? ORDER BY version DESC LIMIT 2",
     )
-    .all(research.id) as Array<{ snapshot: string; created_at: string }>;
+    .all(researchId) as Array<{ snapshot: string; created_at: string }>;
   if (rows.length === 0) return { old: null, new: null, oldAt: "", newAt: "" };
   const newest = JSON.parse(rows[0].snapshot) as ResearchResult;
   const older = rows.length > 1 ? (JSON.parse(rows[1].snapshot) as ResearchResult) : null;

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
-    const old = getLatestSnapshot(obs.thscode);
+    const old = getLatestSnapshot(obs.researchId);
     if (!old) {
       return Response.json(
         { ok: false, error: "该观察尚无对应的已保存研究" },

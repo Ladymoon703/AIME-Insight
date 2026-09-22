@@ -23,7 +23,7 @@ export function getDb(): DatabaseSync {
 
     CREATE TABLE IF NOT EXISTS researches (
       id TEXT PRIMARY KEY,
-      thscode TEXT NOT NULL UNIQUE,
+      thscode TEXT NOT NULL,
       company_name TEXT NOT NULL,
       ticker TEXT NOT NULL,
       research_goal TEXT,
@@ -43,6 +43,7 @@ export function getDb(): DatabaseSync {
 
     CREATE TABLE IF NOT EXISTS observations (
       id TEXT PRIMARY KEY,
+      research_id TEXT NOT NULL,
       thscode TEXT NOT NULL,
       company_name TEXT NOT NULL,
       title TEXT NOT NULL,

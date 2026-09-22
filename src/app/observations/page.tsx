@@ -3,6 +3,8 @@ import DataModeBanner from "@/components/DataModeBanner";
 import ObservationCheckButton from "@/components/observation/ObservationCheckButton";
 import { listObservations } from "@/lib/store/observationStore";
 
+export const dynamic = "force-dynamic";
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "从未检查";
   const d = new Date(iso);
@@ -85,7 +87,7 @@ export default function ObservationsPage() {
                 <div className="mt-3 flex items-center gap-3">
                   <ObservationCheckButton id={o.id} />
                   <Link
-                    href={`/research/${o.thscode}/history`}
+                    href={`/research/${o.thscode}/history?researchId=${o.researchId}`}
                     className="text-sm text-zinc-500 hover:text-accent"
                   >
                     查看研究更新 →

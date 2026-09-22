@@ -13,24 +13,37 @@ export default function ResearchActions({
   companyName: string;
   result: ResearchResult;
 }) {
+  const [researchId, setResearchId] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [observed, setObserved] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  async function ensureSaved(): Promise<string | null> {
+    if (researchId) return researchId;
+    const res = await fetch("/api/research/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ result }),
+    });
+    const data = (await res.json()) as {
+      ok: boolean;
+      researchId?: string;
+      version?: number;
+      error?: string;
+    };
+    if (data.ok && data.researchId) {
+      setResearchId(data.researchId);
+      setSaved(`研究已保存（v${data.version}）`);
+      return data.researchId;
+    }
+    setSaved(`保存失败：${data.error ?? "未知错误"}`);
+    return null;
+  }
+
   async function save() {
     setBusy(true);
     try {
-      const res = await fetch("/api/research/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ result }),
-      });
-      const data = (await res.json()) as { ok: boolean; version?: number; error?: string };
-      if (data.ok) {
-        setSaved(`研究已保存（v${data.version}）`);
-      } else {
-        setSaved(`保存失败：${data.error ?? "未知错误"}`);
-      }
+      await ensureSaved();
     } catch {
       setSaved("保存失败，请稍后重试");
     } finally {
@@ -41,10 +54,13 @@ export default function ResearchActions({
   async function observe() {
     setBusy(true);
     try {
+      const rid = await ensureSaved();
+      if (!rid) return;
       await fetch("/api/observations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          researchId: rid,
           thscode,
           companyName,
           title: `持续关注 ${companyName} 盈利质量`,
@@ -78,12 +94,14 @@ export default function ResearchActions({
         >
           {observed ? "已建立观察" : "建立持续观察"}
         </button>
-        <Link
-          href={`/research/${thscode}/history`}
-          className="rounded-lg border border-black/10 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
-        >
-          查看研究历史
-        </Link>
+        {researchId && (
+          <Link
+            href={`/research/${thscode}/history?researchId=${researchId}`}
+            className="rounded-lg border border-black/10 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+          >
+            查看研究历史
+          </Link>
+        )}
       </div>
       {saved && <div className="mt-2 text-sm text-accent">{saved}</div>}
       {observed && (

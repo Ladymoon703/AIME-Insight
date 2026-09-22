@@ -26,7 +26,7 @@ interface RerunResult {
   error?: string;
 }
 
-export default function ReRunSection({ thscode }: { thscode: string }) {
+export default function ReRunSection({ researchId }: { researchId: string }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RerunResult | null>(null);
 
@@ -37,7 +37,7 @@ export default function ReRunSection({ thscode }: { thscode: string }) {
       const res = await fetch("/api/research/rerun", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ thscode }),
+        body: JSON.stringify({ researchId }),
       });
       const data = (await res.json()) as RerunResult;
       setResult(data);

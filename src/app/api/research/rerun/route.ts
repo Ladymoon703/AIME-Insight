@@ -1,17 +1,22 @@
 import { runResearch } from "@/lib/agent/research";
 import { compareResearch } from "@/lib/agent/update";
 import { explainUpdate } from "@/lib/llm/updateExplain";
-import { saveResearch, getLatestSnapshot } from "@/lib/store/researchStore";
+import {
+  saveResearch,
+  getLatestSnapshot,
+  getResearch,
+} from "@/lib/store/researchStore";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { thscode?: string };
-    const thscode = body.thscode;
-    if (!thscode) {
-      return Response.json({ ok: false, error: "缺少 thscode" }, { status: 400 });
+    const body = (await request.json()) as { researchId?: string };
+    const researchId = body.researchId;
+    if (!researchId) {
+      return Response.json({ ok: false, error: "缺少 researchId" }, { status: 400 });
     }
-    const old = getLatestSnapshot(thscode);
-    if (!old) {
+    const research = getResearch(researchId);
+    const old = getLatestSnapshot(researchId);
+    if (!research || !old) {
       return Response.json(
         { ok: false, error: "未找到已保存的研究" },
         { status: 404 },
