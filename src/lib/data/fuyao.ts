@@ -28,6 +28,81 @@ interface Envelope<T> {
   data: T;
 }
 
+// ---------------- 原始响应类型（扶摇 API 契约） ----------------
+
+interface RawTickerItem {
+  thscode: string;
+  ticker: string;
+  name: string;
+  exchange: string | null;
+  list_date: string | null;
+}
+
+interface RawQuoteItem {
+  last_price: number | null;
+  price_change: number | null;
+  price_change_ratio_pct: number | null;
+  open_price: number | null;
+  high_price: number | null;
+  low_price: number | null;
+  prev_price: number | null;
+  volume: number | null;
+  turnover: number | null;
+}
+
+interface RawBarItem {
+  date_ms: number;
+  open_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  volume: number;
+  turnover: number;
+}
+
+interface RawStatementItem {
+  fiscal_year: number;
+  fiscal_period: string;
+  report_date_ms: number;
+  period_end_ms: number;
+  operating_income?: number | null;
+  operating_costs?: number | null;
+  net_profit?: number | null;
+  parent_holder_net_profit?: number | null;
+  basic_eps?: number | null;
+  assets_total?: number | null;
+  holder_equity_total?: number | null;
+  total_debt?: number | null;
+  act_cash_flow_net?: number | null;
+}
+
+interface RawIndicator {
+  index_id: string;
+  value: string | null;
+}
+
+interface RawIndicatorAbility {
+  ability: string;
+  indicators: RawIndicator[];
+}
+
+interface RawValuationItem {
+  thscode: string;
+  name: string | null;
+  pe_ttm: number | null;
+  pe_mrq: number | null;
+  pb_mrq: number | null;
+  ps_ttm: number | null;
+  pcf_ttm: number | null;
+}
+
+interface RawIndexItem {
+  thscode: string;
+  name: string;
+}
+
+// ---------------- 通用请求 ----------------
+
 async function fuyaoGet<T>(
   path: string,
   params: Record<string, string | number | undefined>,
@@ -56,13 +131,13 @@ async function fuyaoGet<T>(
   return body.data;
 }
 
-/** 标的检索：按名称/代码模糊匹配 */
+// ---------------- 标的检索 ----------------
+
 export async function searchTicker(q: string): Promise<Company[]> {
-  const data = await fuyaoGet<{ item: any[] }>("/api/meta/tickers/search", {
-    q,
-    asset_type: "a-share",
-    limit: 10,
-  });
+  const data = await fuyaoGet<{ item: RawTickerItem[] }>(
+    "/api/meta/tickers/search",
+    { q, asset_type: "a-share", limit: 10 },
+  );
   return (data.item ?? []).map((it) => ({
     thscode: it.thscode,
     ticker: it.ticker,
@@ -72,9 +147,10 @@ export async function searchTicker(q: string): Promise<Company[]> {
   }));
 }
 
-/** 行情快照（批量） */
+// ---------------- 行情 ----------------
+
 export async function getQuote(thscodes: string[]): Promise<Quote[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+  const data = await fuyaoGet<{ item: RawQuoteItem[] }>(
     "/api/a-share/prices/snapshot",
     { thscodes: thscodes.join(",") },
   );
@@ -91,13 +167,12 @@ export async function getQuote(thscodes: string[]): Promise<Quote[]> {
   }));
 }
 
-/** 历史日 K 线（前复权） */
 export async function getHistorical(
   thscode: string,
   startMs: number,
   endMs: number,
 ): Promise<PriceBar[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+  const data = await fuyaoGet<{ item: RawBarItem[] }>(
     "/api/a-share/prices/historical",
     { thscode, interval: "1d", start: startMs, end: endMs, adjust: "forward" },
   );
@@ -112,22 +187,28 @@ export async function getHistorical(
   }));
 }
 
+// ---------------- 财务报表 ----------------
+
 type PeriodEnum = "annual" | "quarterly";
+type StatementEndpoint =
+  | "income-statements"
+  | "balance-sheets"
+  | "cash-flow-statements";
 
 async function getStatements(
-  endpoint: "income-statements" | "balance-sheets" | "cash-flow-statements",
+  endpoint: StatementEndpoint,
   thscode: string,
   period: PeriodEnum,
   limit: number,
-): Promise<any[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+): Promise<RawStatementItem[]> {
+  const data = await fuyaoGet<{ item: RawStatementItem[] }>(
     `/api/a-share/financials/${endpoint}`,
     { thscode, period, limit },
   );
   return data.item ?? [];
 }
 
-/** 合并多表为 FinancialPeriod 序列（按报告期末对齐） */
+/** 合并三张报表为 FinancialPeriod 序列（按报告期末对齐） */
 export async function getFinancials(
   thscode: string,
   period: PeriodEnum = "quarterly",
@@ -183,24 +264,29 @@ export async function getFinancials(
   return Array.from(map.values()).sort((a, b) => a.periodEndMs - b.periodEndMs);
 }
 
-/** 财务指标（单报告期五类能力） */
+// ---------------- 财务指标 ----------------
+
 export async function getIndicators(
   thscode: string,
   report: string,
 ): Promise<FinancialIndicatorReport> {
-  const data = await fuyaoGet<{ abilities: any[] }>(
+  const data = await fuyaoGet<{ abilities: RawIndicatorAbility[] }>(
     "/api/a-share/financials/indicators",
     { thscode, report },
   );
-  const toMap = (list: any[] | undefined): Record<string, number | null> => {
+  const toMap = (
+    list: RawIndicator[] | undefined,
+  ): Record<string, number | null> => {
     const m: Record<string, number | null> = {};
     for (const ind of list ?? []) {
       m[ind.index_id] = ind.value == null ? null : Number(ind.value);
     }
     return m;
   };
-  const abilities = new Map<string, any[]>();
-  for (const a of data.abilities ?? []) abilities.set(a.ability, a.indicators ?? []);
+  const abilities = new Map<string, RawIndicator[]>();
+  for (const a of data.abilities ?? []) {
+    abilities.set(a.ability, a.indicators ?? []);
+  }
   return {
     report,
     growth: toMap(abilities.get("growth")),
@@ -211,9 +297,10 @@ export async function getIndicators(
   };
 }
 
-/** 估值快照（批量） */
+// ---------------- 估值 ----------------
+
 export async function getValuation(thscodes: string[]): Promise<Valuation[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+  const data = await fuyaoGet<{ item: RawValuationItem[] }>(
     "/api/a-share/valuations/snapshot",
     { thscodes: thscodes.join(",") },
   );
@@ -228,22 +315,24 @@ export async function getValuation(thscodes: string[]): Promise<Valuation[]> {
   }));
 }
 
-/** 同花顺行业指数列表 */
-export async function getIndexList(tag = "industry"): Promise<{ thscode: string; name: string }[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+// ---------------- 指数 ----------------
+
+export async function getIndexList(
+  tag = "industry",
+): Promise<{ thscode: string; name: string }[]> {
+  const data = await fuyaoGet<{ item: RawIndexItem[] }>(
     "/api/a-share-index/catalog/ths-index-list",
     { tag },
   );
   return (data.item ?? []).map((it) => ({ thscode: it.thscode, name: it.name }));
 }
 
-/** 指数历史 K 线 */
 export async function getIndexHistorical(
   thscode: string,
   startMs: number,
   endMs: number,
 ): Promise<PriceBar[]> {
-  const data = await fuyaoGet<{ item: any[] }>(
+  const data = await fuyaoGet<{ item: RawBarItem[] }>(
     "/api/a-share-index/prices/historical",
     { thscode, interval: "1d", start: startMs, end: endMs },
   );

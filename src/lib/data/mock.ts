@@ -310,7 +310,7 @@ export function mockPeers(thscode: string): Peer[] {
     },
   ];
   const peers = PEERS[thscode] ?? ["002594.SZ", "300014.SZ", "002812.SZ"];
-  peers.forEach((p, i) => {
+  peers.forEach((p) => {
     const pm = findMeta(p);
     const rand = seededRandom(hash(p));
     list.push({
