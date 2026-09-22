@@ -40,7 +40,8 @@ export function createEvidence(input: EvidenceInput): Evidence {
   return {
     id: input.id ?? nextEvidenceId(),
     type: input.type ?? "metric",
-    status: input.status ?? "verified",
+    // unverified（暂无法验证）的证据绝不默认 verified；未显式指定时按「数据不足」处理
+    status: input.status ?? (input.factKind === "unverified" ? "missing" : "verified"),
     evidenceClass: input.evidenceClass,
     factKind: input.factKind,
     dimension: input.dimension,

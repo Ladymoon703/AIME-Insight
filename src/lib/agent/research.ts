@@ -333,7 +333,8 @@ function buildEvidence(input: EvidenceInput): {
       unit,
       period,
       source: input.src,
-      factKind: "fact",
+      // value 为 null 时：事实不可得 → factKind 应体现 unverified（createEvidence 会据此默认 status=missing）
+      factKind: value == null ? "unverified" : "fact",
       evidenceClass: value == null ? "unknown" : value > 0 ? "positive" : "negative",
       rawField: key,
     });

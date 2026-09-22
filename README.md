@@ -148,6 +148,10 @@ LLM 同理：
 
 三种事实层级：`fact`（客观事实）/ `inference`（分析推断）/ `unverified`（暂无法验证）。
 
+**状态语义**：`verified`（数据正常）/ `missing`（数据不足或不可得）/ `stale`（过期）/ `failed`（接口失败）/ `conflict`（来源冲突）。`unverified` 证据（value 为 null、信息不足）**绝不默认 `verified`**，而默认 `missing`，避免把「无法验证」伪装成「已验证」。
+
+**contradictory 证据结构**：值为两个已验证指标的确定性比较（如 `23.8% vs 4.7%`），`factKind = fact`、`method = deterministic`，表示「利润增速明显高于现金流增速」这类可计算的分化，而非无法解释的数据字段。
+
 LLM 输出只能引用 Evidence ID，数字溯源校验会拒绝「Evidence 中不存在的数字」和「不存在的 Evidence ID」。
 
 ---

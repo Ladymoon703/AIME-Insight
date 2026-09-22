@@ -60,3 +60,56 @@ test("sourceName 演示数据必须明确标识", () => {
   assert.equal(sourceName("live", "扶摇金融数据 API"), "扶摇金融数据 API");
   assert.equal(sourceName("mock", "扶摇金融数据 API"), "扶摇金融数据 API（演示数据）");
 });
+
+test("unverified 证据默认 status 为 missing，而非 verified", () => {
+  const ev = createEvidence({
+    evidenceClass: "unknown",
+    factKind: "unverified",
+    dimension: "profit_quality",
+    metric: "profit_source",
+    label: "利润增长来源",
+    value: null,
+    unit: "",
+    source: "扶摇金融数据 API",
+    method: "llm",
+  });
+  assert.equal(ev.evidenceClass, "unknown");
+  assert.equal(ev.factKind, "unverified");
+  assert.equal(ev.status, "missing");
+  assert.equal(ev.value, null);
+});
+
+test("unverified 证据显式指定 status 时以显式值为准", () => {
+  const ev = createEvidence({
+    evidenceClass: "unknown",
+    factKind: "unverified",
+    dimension: "events",
+    metric: "events",
+    label: "公告/新闻",
+    value: null,
+    unit: "",
+    source: "扶摇金融数据 API",
+    status: "failed",
+  });
+  assert.equal(ev.status, "failed");
+});
+
+test("contradictory 证据是确定性比较（fact + deterministic + 双值表述）", () => {
+  const ev = createEvidence({
+    evidenceClass: "contradictory",
+    factKind: "fact",
+    dimension: "profit_quality",
+    metric: "profit_cash_divergence",
+    label: "利润增速明显高于现金流增速",
+    value: "23.8% vs 4.7%",
+    unit: "",
+    source: "扶摇金融数据 API",
+    method: "deterministic",
+  });
+  assert.equal(ev.evidenceClass, "contradictory");
+  assert.equal(ev.factKind, "fact");
+  assert.equal(ev.method, "deterministic");
+  assert.equal(ev.status, "verified");
+  // 值是两个已验证指标的确定性比较，而非无法解释的字段
+  assert.match(ev.value as string, /vs/);
+});
