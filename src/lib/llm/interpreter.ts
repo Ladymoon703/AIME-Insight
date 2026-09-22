@@ -97,7 +97,7 @@ export async function runInterpreter(
     if (result.ok && result.output) {
       return { output: result.output, mode: "live" };
     }
-    console.warn("[interpreter] 校验失败，降级模板：", result.errors);
+    console.warn("[interpreter] 校验失败，降级模板：", result.errors, "raw:", content.slice(0, 600));
     return { output: templateInterpret(input), mode: "template" };
   } catch (e) {
     console.warn("[interpreter] LLM 调用失败，降级模板：", (e as Error).message);

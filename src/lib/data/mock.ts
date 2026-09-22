@@ -373,3 +373,15 @@ function round(v: number, digits = 2): number {
 export function mockCompanyByThscode(thscode: string): Company {
   return toCompany(findMeta(thscode));
 }
+
+/** 可比公司清单（含本公司 + 预设同行）：仅为标的清单，不含任何伪造财务数值 */
+export function peerUniverse(thscode: string): { thscode: string; name: string }[] {
+  const self = findMeta(thscode);
+  const list = [{ thscode: self.thscode, name: self.name }];
+  const peers = PEERS[thscode] ?? [];
+  for (const p of peers) {
+    const pm = findMeta(p);
+    list.push({ thscode: pm.thscode, name: pm.name });
+  }
+  return list;
+}

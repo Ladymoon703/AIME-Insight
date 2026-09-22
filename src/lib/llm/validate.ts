@@ -22,6 +22,14 @@ export function extractNumbers(text: string): number[] {
   return matches.map(Number).filter((n) => !Number.isNaN(n));
 }
 
+/** 只提取带金融单位（%/x/倍/亿/万）的数字，用于判断 LLM 是否编造金融指标 */
+export function extractMetricNumbers(text: string): number[] {
+  const matches = text.match(/-?\d+(?:\.\d+)?\s*(?:%|x|倍|亿|万)/g) ?? [];
+  return matches.map((m) => Number(m.replace(/[^\d.\-]/g, ""))).filter(
+    (n) => !Number.isNaN(n),
+  );
+}
+
 export function collectAllowedNumbers(evidence: Evidence[]): number[] {
   const nums: number[] = [];
   for (const e of evidence) {
@@ -32,7 +40,6 @@ export function collectAllowedNumbers(evidence: Evidence[]): number[] {
 }
 
 export function isAllowedNumber(n: number, allowed: number[]): boolean {
-  if (Number.isInteger(n) && n >= 0 && n <= 30) return true; // 计数类
   return allowed.some(
     (a) => Math.abs(a - n) <= Math.max(Math.abs(a), Math.abs(n)) * 0.01 + 0.01,
   );
@@ -121,7 +128,7 @@ export function parseAndValidate(
 
   const allowed = collectAllowedNumbers(input.evidence);
   const text = collectText(output);
-  const numbers = extractNumbers(text);
+  const numbers = extractMetricNumbers(text);
   const suspicious = numbers.filter((n) => !isAllowedNumber(n, allowed));
   if (suspicious.length > 0) {
     errors.push(`LLM 输出包含未经 Evidence 支持的数字: ${suspicious.join(", ")}`);

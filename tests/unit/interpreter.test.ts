@@ -5,6 +5,7 @@ import {
   templateInterpret,
   buildDeepAnalysis,
   extractNumbers,
+  extractMetricNumbers,
   isAllowedNumber,
 } from "../../src/lib/llm/validate.ts";
 import type { InterpreterInput, InterpreterOutput } from "../../src/lib/llm/schema.ts";
@@ -143,7 +144,7 @@ test("templateInterpret 不输出买卖建议", () => {
 // 8. 数字提取与溯源
 test("extractNumbers 与 isAllowedNumber", () => {
   assert.deepEqual(extractNumbers("+23.8% 和 -8.2%"), [23.8, -8.2]);
-  assert.equal(isAllowedNumber(8, [23.8]), true); // 计数类
+  assert.deepEqual(extractMetricNumbers("+23.8% 和 32.6x 和 500亿 和 60日 和 2026年"), [23.8, 32.6, 500]);
   assert.equal(isAllowedNumber(999, [23.8]), false);
   assert.equal(isAllowedNumber(23.8, [23.8]), true);
 });

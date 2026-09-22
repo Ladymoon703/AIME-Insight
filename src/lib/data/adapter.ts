@@ -141,12 +141,48 @@ export function createDataSource(): DataSource {
     },
 
     async getPeers(thscode) {
-      // 同行对比：MVP 使用预设可比公司清单（真实模式也需要该清单）。
       if (mode === "mock") return ok(mock.mockPeers(thscode), src);
       try {
-        // 真实模式：对预设可比公司 + 本公司批量取估值与指标，再由确定性引擎计算对比。
-        // 此处返回 mock 的可比公司结构作为骨架，估值/指标由上层真实接口填充。
-        const peers = mock.mockPeers(thscode);
+        // 真实模式：预设可比公司清单（仅标的），估值与财务指标全部真实取数。
+        const universe = mock.peerUniverse(thscode);
+        const thscodes = universe.map((u) => u.thscode);
+        const valuations = await fuyao.getValuation(thscodes);
+        const valMap = new Map(valuations.map((v) => [v.thscode, v]));
+
+        const peers: Peer[] = [];
+        for (const u of universe) {
+          const val = valMap.get(u.thscode);
+          let roe: number | null = null;
+          let revenueGrowth: number | null = null;
+          let netMargin: number | null = null;
+          try {
+            const fin = await fuyao.getFinancials(u.thscode, "quarterly", 1);
+            const latest = fin[0];
+            if (latest) {
+              const q = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 }[latest.fiscalPeriod] ?? 4;
+              const ind = await fuyao.getIndicators(
+                u.thscode,
+                `${latest.fiscalYear}-${q}`,
+              );
+              roe = ind.profitability.index_weighted_avg_roe ?? null;
+              revenueGrowth =
+                ind.growth.operating_income_yoy_growth_ratio ?? null;
+              netMargin = ind.profitability.sale_net_interest_ratio ?? null;
+            }
+          } catch {
+            // 单个 peer 取数失败时保持 null，不影响整体
+          }
+          peers.push({
+            thscode: u.thscode,
+            ticker: u.thscode.split(".")[0],
+            name: u.name,
+            roe,
+            revenueGrowth,
+            netMargin,
+            peTtm: val?.peTtm ?? null,
+            intervalReturn: null,
+          });
+        }
         return ok(peers, src);
       } catch (e) {
         return failed(src, e);
