@@ -1,27 +1,110 @@
 import Link from "next/link";
 import DataModeBanner from "@/components/DataModeBanner";
+import { listResearches } from "@/lib/store/researchStore";
+import { statusMeta } from "@/lib/ui";
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
+}
 
 export default function ResearchListPage() {
+  const researches = listResearches();
+
   return (
     <>
       <DataModeBanner />
-      <div className="mx-auto max-w-4xl px-4 py-12">
+      <div className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-2xl font-semibold">我的研究</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          这里会展示你保存过的研究档案（Phase 5 完成）。
+          你保存的是研究状态，而不是股票收藏。
         </p>
-        <div className="mt-8 rounded-xl border border-dashed border-black/10 bg-white p-10 text-center">
-          <p className="text-zinc-500">还没有研究记录</p>
-          <p className="mt-1 text-sm text-zinc-400">
-            输入一家你正在关注的公司，开始建立第一份研究。
-          </p>
-          <Link
-            href="/"
-            className="mt-5 inline-flex rounded-lg bg-accent px-6 py-2 text-sm font-medium text-white hover:bg-accent/90"
-          >
-            开始研究
-          </Link>
-        </div>
+
+        {researches.length === 0 ? (
+          <div className="mt-8 rounded-xl border border-dashed border-black/10 bg-white p-10 text-center">
+            <p className="text-zinc-500">还没有研究记录</p>
+            <p className="mt-1 text-sm text-zinc-400">
+              输入一家你正在关注的公司，开始建立第一份研究。
+            </p>
+            <Link
+              href="/"
+              className="mt-5 inline-flex rounded-lg bg-accent px-6 py-2 text-sm font-medium text-white hover:bg-accent/90"
+            >
+              开始研究
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {researches.map((r) => {
+              const conclusion =
+                r.latest.stateUpdate?.conclusion ??
+                r.latest.deepAnalysis?.coreConclusion ??
+                "暂无结论";
+              const unknownCount = r.latest.evidence.unknown.length;
+              const contradictionCount = r.latest.evidence.contradictory.length;
+              return (
+                <Link
+                  key={r.thscode}
+                  href={`/research/${r.thscode}/history`}
+                  className="block rounded-xl border border-black/5 bg-white p-5 transition-colors hover:border-accent/30"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-zinc-800">
+                          {r.companyName}
+                        </span>
+                        <span className="text-xs text-zinc-400">
+                          {r.thscode}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-zinc-600">{conclusion}</p>
+                    </div>
+                    <div className="text-right text-xs text-zinc-400">
+                      <div>版本 v{r.version}</div>
+                      <div className="mt-1">更新 {fmtDate(r.updatedAt)}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {r.latest.currentState.map((s) => {
+                      const meta = statusMeta(s.status);
+                      return (
+                        <span
+                          key={s.dimension}
+                          className={`inline-flex items-center gap-1 rounded bg-zinc-50 px-2 py-0.5 text-xs ${meta.className}`}
+                        >
+                          <span>{meta.emoji}</span>
+                          <span>{s.label}</span>
+                          <span className="text-zinc-500">{s.summary}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {(unknownCount > 0 || contradictionCount > 0) && (
+                    <div className="mt-3 text-xs text-zinc-500">
+                      {contradictionCount > 0 && (
+                        <span className="mr-3 evidence-contradictory">
+                          🟠 {contradictionCount} 项矛盾
+                        </span>
+                      )}
+                      {unknownCount > 0 && (
+                        <span className="evidence-unknown">
+                          ⚪ {unknownCount} 项未知
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );

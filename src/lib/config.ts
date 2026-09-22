@@ -25,6 +25,3 @@ export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 export function deepSeekApiKey(): string {
   return process.env.DEEPSEEK_API_KEY ?? "";
 }
-
-export const DB_PATH =
-  process.env.AIME_DB_PATH || process.cwd() + "/data/aime.db";

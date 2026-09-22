@@ -11,6 +11,7 @@ import EventsSection from "@/components/research/EventsSection";
 import EvidenceBoard from "@/components/research/EvidenceBoard";
 import DeepAnalysisSection from "@/components/research/DeepAnalysisSection";
 import NextActions from "@/components/research/NextActions";
+import ResearchActions from "@/components/research/ResearchActions";
 import { EvidenceDrawerProvider } from "@/components/research/EvidenceDrawer";
 import { runResearch } from "@/lib/agent/research";
 import { resolveByThscode } from "@/lib/agent/planner";
@@ -164,6 +165,12 @@ export default async function ResearchPage({
         )}
 
         <NextActions actions={result.nextActions} thscode={thscode} />
+
+        <ResearchActions
+          thscode={thscode}
+          companyName={result.company.name}
+          result={result}
+        />
       </div>
     </EvidenceDrawerProvider>
   );
