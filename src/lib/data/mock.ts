@@ -241,6 +241,13 @@ export function mockIndicators(
   const revenueYoY = isCATL ? 19.7 : 12.5;
   const netProfitYoY = isCATL ? 23.8 : 15.2;
   const cashFlowYoY = isCATL ? 4.7 : 8.0; // 现金流几乎走平
+  // 净利润现金含量：与扶摇真实口径一致（百分比 = 经营现金流净额 / 归母净利润 × 100）
+  const fin = mockFinancials(thscode);
+  const latest = fin[fin.length - 1];
+  const cashContentPct =
+    latest && latest.parentHolderNetProfit && latest.actCashFlowNet
+      ? round((latest.actCashFlowNet / latest.parentHolderNetProfit) * 100, 2)
+      : null;
   return {
     report,
     growth: {
@@ -269,7 +276,7 @@ export function mockIndicators(
       receive_account_turnover_ratio: 5.2,
     },
     cashFlow: {
-      net_profit_cash_content: isCATL ? 1.02 : 1.25,
+      net_profit_cash_content: cashContentPct,
       operating_cash_net_yoy_growth_ratio: cashFlowYoY,
       cash_operating_index: 0.95,
       operating_cash_flow_net_divide_income: isCATL ? 0.15 : 0.4,

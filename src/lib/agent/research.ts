@@ -221,6 +221,11 @@ export async function runResearch(input: {
     (peerRes?.data?.length ?? 0) > 1
       ? { peers: peerRes!.data!, indexName: null, indexIntervalReturn: null }
       : null;
+  const industryStatus: DataStatus | null = !has("industry")
+    ? null
+    : industry
+      ? "verified"
+      : peerRes?.status ?? "missing";
 
   // ---- 9. 数据状态与来源 ----
   const dataStatus: DataStatus[] = Array.from(
@@ -254,6 +259,7 @@ export async function runResearch(input: {
     valuationPeers: null,
     market,
     industry,
+    industryStatus,
     events: eventRes?.data ?? null,
     evidence,
     contradiction: divergence
@@ -348,8 +354,9 @@ function buildEvidence(input: EvidenceInput): {
     }));
   }
   if (input.ind.netProfitCashContent != null) {
+    // 口径：扶摇返回百分比（如 158.80 表示 158.80%），与 mock 内部口径一致
     push(createEvidence({
-      dimension: "profit_quality", metric: "net_profit_cash_content", label: "净利润现金含量", value: input.ind.netProfitCashContent, unit: "",
+      dimension: "profit_quality", metric: "net_profit_cash_content", label: "净利润现金含量", value: input.ind.netProfitCashContent, unit: "%",
       period, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "net_profit_cash_content",
     }));
   }
@@ -477,8 +484,9 @@ function stateFor(
         ? { status: "contradictory", summary: "待观察" }
         : { status: "positive", summary: "基本同步" };
     case "valuation":
+      // 无历史 PE 序列 / 行业中位数等可靠基准时，不产生方向性判断
       return input.hasValuation
-        ? { status: "neutral", summary: "偏高 / 待比较" }
+        ? { status: "neutral", summary: "待验证" }
         : { status: "unknown", summary: "待验证" };
     case "market":
       return input.priceReturnPct == null

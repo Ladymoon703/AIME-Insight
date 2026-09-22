@@ -25,7 +25,7 @@ export default function ProfitQualitySection({
         <NumCard label="经营现金流同比" value={fmtPct(cfYoY)} />
         <NumCard
           label="净利润现金含量"
-          value={cashContent == null ? "--" : cashContent.toFixed(2)}
+          value={cashContent == null ? "--" : cashContent.toFixed(1) + "%"}
         />
       </div>
 

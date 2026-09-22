@@ -233,6 +233,8 @@ export interface ResearchResult {
     relative: RelativePerformance | null;
   } | null;
   industry: IndustryPosition | null;
+  /** 行业数据状态（missing/failed 等），用于显式展示「暂无同行数据」而非静默隐藏 */
+  industryStatus: DataStatus | null;
   events: ResearchEvent[] | null;
   evidence: {
     facts: Evidence[];

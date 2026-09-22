@@ -116,6 +116,24 @@ export default async function ResearchPage({
           </div>
         )}
 
+        {has("industry") && !result.industry && (
+          <section className="rounded-xl border border-black/5 bg-white p-5">
+            <h2 className="text-lg font-semibold">行业位置</h2>
+            <div className="mt-3 rounded-lg border border-dashed border-black/10 bg-zinc-50 p-4 text-sm text-zinc-500">
+              <div className="font-medium text-zinc-700">
+                {result.industryStatus === "failed"
+                  ? "行业数据获取失败"
+                  : "暂无同行对比数据"}
+              </div>
+              <p className="mt-1">
+                {result.industryStatus === "failed"
+                  ? "同行数据接口调用失败，本次无法判断公司在行业中的位置。"
+                  : "当前没有可比公司数据，因此无法判断这是公司自身变化还是行业共同变化——这是「暂无数据」，而非未分析该维度。"}
+              </p>
+            </div>
+          </section>
+        )}
+
         {has("events") && (
           <div id="events">
             <EventsSection events={result.events} source={source} />
