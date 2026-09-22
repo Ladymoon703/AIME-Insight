@@ -8,7 +8,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 function defaultDbPath(): string {
-  return process.env.AIME_DB_PATH || process.cwd() + "/data/aime.db";
+  return (process.env.AIME_DB_PATH || process.cwd() + "/data/aime.db").trim();
 }
 
 let db: DatabaseSync | null = null;

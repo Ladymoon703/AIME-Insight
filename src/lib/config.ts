@@ -16,12 +16,12 @@ export function hasDeepSeekKey(): boolean {
 export const FUYAO_BASE_URL = "https://fuyao.aicubes.cn";
 
 export function fuyaoApiKey(): string {
-  return process.env.FUYAO_API_KEY ?? "";
+  return (process.env.FUYAO_API_KEY ?? "").trim();
 }
 
 export const DEEPSEEK_BASE_URL =
   process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
 export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 export function deepSeekApiKey(): string {
-  return process.env.DEEPSEEK_API_KEY ?? "";
+  return (process.env.DEEPSEEK_API_KEY ?? "").trim();
 }
