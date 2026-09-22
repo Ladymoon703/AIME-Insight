@@ -97,6 +97,20 @@ async function pickCompany(
   return candidates[0];
 }
 
+export async function resolveByThscode(thscode: string): Promise<Company> {
+  const ds = createDataSource();
+  const res = await ds.search(thscode);
+  if (res.data && res.data.length > 0) {
+    return res.data.find((c) => c.thscode === thscode) ?? res.data[0];
+  }
+  return {
+    thscode,
+    ticker: thscode.split(".")[0],
+    name: thscode,
+    exchange: thscode.split(".")[1] ?? null,
+  };
+}
+
 export async function resolveSymbol(
   query: string,
 ): Promise<Company | null> {

@@ -12,7 +12,7 @@ export type DataStatus =
   | "failed"
   | "conflict";
 
-export type EvidenceClass = "positive" | "negative" | "contradictory" | "unknown";
+export type EvidenceClass = "positive" | "negative" | "contradictory" | "unknown" | "neutral";
 
 /** fact=客观事实（来自数据），inference=分析推断，unverified=暂无法验证 */
 export type FactKind = "fact" | "inference" | "unverified";
