@@ -99,8 +99,8 @@ npm start
 
 | 变量 | 必填 | 说明 |
 |---|---|---|
-| `FUYAO_API_KEY` | 否 | 扶摇金融数据 API Key，见 [fuyao.aicubes.cn/admin](https://fuyao.aicubes.cn/admin) |
-| `DEEPSEEK_API_KEY` | 否 | DeepSeek API Key，见 [platform.deepseek.com](https://platform.deepseek.com) |
+| `FUYAO_API_KEY` | 否 | 扶摇金融数据 API Key |
+| `DEEPSEEK_API_KEY` | 否 | DeepSeek API Key |
 | `DEEPSEEK_BASE_URL` | 否 | 默认 `https://api.deepseek.com` |
 | `DEEPSEEK_MODEL` | 否 | 默认 `deepseek-chat` |
 | `TURSO_DATABASE_URL` | 否 | Turso 数据库 URL（如 `libsql://xxx.turso.io`）；配置后优先走 Turso，Vercel 上持久化必须配置 |
