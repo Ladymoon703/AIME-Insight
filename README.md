@@ -37,7 +37,7 @@
 | Frontend | Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS v4 |
 | Charts | ECharts（自行封装 wrapper） |
 | Backend | Next.js Route Handlers（服务端，不暴露 Key） |
-| Storage | Node 内置 `node:sqlite`（无额外依赖，`data/aime.db`） |
+| Storage | `@libsql/client`（Turso 远程 / 本地 `file:`；Vercel 上持久化） |
 | 数据源 | 扶摇金融数据 API（REST，`X-api-key` 鉴权） |
 | LLM | DeepSeek（OpenAI 兼容 HTTP API） |
 
@@ -103,7 +103,9 @@ npm start
 | `DEEPSEEK_API_KEY` | 否 | DeepSeek API Key，见 [platform.deepseek.com](https://platform.deepseek.com) |
 | `DEEPSEEK_BASE_URL` | 否 | 默认 `https://api.deepseek.com` |
 | `DEEPSEEK_MODEL` | 否 | 默认 `deepseek-chat` |
-| `AIME_DB_PATH` | 否 | SQLite 文件路径，默认 `data/aime.db` |
+| `TURSO_DATABASE_URL` | 否 | Turso 数据库 URL（如 `libsql://xxx.turso.io`）；配置后优先走 Turso，Vercel 上持久化必须配置 |
+| `TURSO_AUTH_TOKEN` | 否 | Turso 鉴权 token |
+| `AIME_DB_PATH` | 否 | 本地 SQLite 文件路径（未配 Turso 时使用），默认 `data/aime.db` |
 
 > `.env.local` 已被 gitignore，真实密钥不会提交；`.env.example` 只含空占位符。
 
