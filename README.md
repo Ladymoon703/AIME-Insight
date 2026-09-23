@@ -107,8 +107,6 @@ npm start
 | `TURSO_AUTH_TOKEN` | 否 | Turso 鉴权 token |
 | `AIME_DB_PATH` | 否 | 本地 SQLite 文件路径（未配 Turso 时使用），默认 `data/aime.db` |
 
-> `.env.local` 已被 gitignore，真实密钥不会提交；`.env.example` 只含空占位符。
-
 ---
 
 ## 6. mock / live 模式
