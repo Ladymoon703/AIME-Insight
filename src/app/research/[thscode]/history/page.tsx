@@ -31,13 +31,13 @@ export default async function HistoryPage({
   // 优先使用 searchParams 里的 researchId；否则回退到该 thscode 的最新 research
   let researchId = sp.researchId;
   if (!researchId) {
-    const list = listResearches().filter((r) => r.thscode === thscode);
+    const list = (await listResearches()).filter((r) => r.thscode === thscode);
     researchId = list[0]?.researchId;
   }
 
-  const research = researchId ? getResearch(researchId) : null;
-  const latest = researchId ? getLatestSnapshot(researchId) : null;
-  const versions = researchId ? getResearchVersions(researchId) : [];
+  const research = researchId ? await getResearch(researchId) : null;
+  const latest = researchId ? await getLatestSnapshot(researchId) : null;
+  const versions = researchId ? await getResearchVersions(researchId) : [];
 
   if (!research || !latest || versions.length === 0) {
     return (

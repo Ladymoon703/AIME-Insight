@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     if (!researchId) {
       return Response.json({ ok: false, error: "缺少 researchId" }, { status: 400 });
     }
-    const research = getResearch(researchId);
-    const old = getLatestSnapshot(researchId);
+    const research = await getResearch(researchId);
+    const old = await getLatestSnapshot(researchId);
     if (!research || !old) {
       return Response.json(
         { ok: false, error: "未找到已保存的研究" },
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       dims,
       timeWindow: old.timeWindow,
     });
-    const { version } = saveResearch(newResult);
+    const { version } = await saveResearch(newResult);
 
     const changes = compareResearch(old, newResult);
     const explained = await explainUpdate({

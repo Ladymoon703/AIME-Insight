@@ -14,8 +14,8 @@ function fmtDate(iso: string): string {
   return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
 }
 
-export default function ResearchListPage() {
-  const researches = listResearches();
+export default async function ResearchListPage() {
+  const researches = await listResearches();
 
   // 按公司分组展示：同一公司可有多个研究目标
   const grouped = new Map<string, typeof researches>();

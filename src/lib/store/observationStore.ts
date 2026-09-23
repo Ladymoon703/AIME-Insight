@@ -19,7 +19,7 @@ export interface ObservationRow {
   lastResult: unknown | null;
 }
 
-export function createObservation(input: {
+export async function createObservation(input: {
   researchId: string;
   thscode: string;
   companyName: string;
@@ -27,24 +27,25 @@ export function createObservation(input: {
   description: string;
   dimensions: string[];
   metrics: string[];
-}): ObservationRow {
-  const db = getDb();
+}): Promise<ObservationRow> {
+  const db = await getDb();
   const id = newId();
   const ts = now();
-  db.prepare(
-    "INSERT INTO observations (id, research_id, thscode, company_name, title, description, dimensions, metrics, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(
-    id,
-    input.researchId,
-    input.thscode,
-    input.companyName,
-    input.title,
-    input.description,
-    JSON.stringify(input.dimensions),
-    JSON.stringify(input.metrics),
-    ts,
-    ts,
-  );
+  await db.execute({
+    sql: "INSERT INTO observations (id, research_id, thscode, company_name, title, description, dimensions, metrics, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [
+      id,
+      input.researchId,
+      input.thscode,
+      input.companyName,
+      input.title,
+      input.description,
+      JSON.stringify(input.dimensions),
+      JSON.stringify(input.metrics),
+      ts,
+      ts,
+    ],
+  });
   return {
     id,
     researchId: input.researchId,
@@ -78,31 +79,32 @@ function rowToObservation(r: Record<string, unknown>): ObservationRow {
   };
 }
 
-export function listObservations(): ObservationRow[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT * FROM observations ORDER BY updated_at DESC")
-    .all() as Array<Record<string, unknown>>;
-  return rows.map(rowToObservation);
+export async function listObservations(): Promise<ObservationRow[]> {
+  const db = await getDb();
+  const rs = await db.execute("SELECT * FROM observations ORDER BY updated_at DESC");
+  return (rs.rows as Array<Record<string, unknown>>).map(rowToObservation);
 }
 
-export function getObservation(id: string): ObservationRow | null {
-  const db = getDb();
-  const r = db
-    .prepare("SELECT * FROM observations WHERE id = ?")
-    .get(id) as Record<string, unknown> | undefined;
+export async function getObservation(id: string): Promise<ObservationRow | null> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT * FROM observations WHERE id = ?",
+    args: [id],
+  });
+  const r = rs.rows[0] as Record<string, unknown> | undefined;
   if (!r) return null;
   return rowToObservation(r);
 }
 
 /** 更新一次「检查最新情况」的结果 */
-export function updateObservationCheck(
+export async function updateObservationCheck(
   id: string,
   result: { changesSummary: string; changeCount: number; checkedAt: string },
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
   const ts = now();
-  db.prepare(
-    "UPDATE observations SET last_checked_at = ?, last_result = ?, updated_at = ? WHERE id = ?",
-  ).run(ts, JSON.stringify(result), ts, id);
+  await db.execute({
+    sql: "UPDATE observations SET last_checked_at = ?, last_result = ?, updated_at = ? WHERE id = ?",
+    args: [ts, JSON.stringify(result), ts, id],
+  });
 }

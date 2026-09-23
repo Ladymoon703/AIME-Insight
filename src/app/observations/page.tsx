@@ -13,8 +13,8 @@ function fmtDate(iso: string | null): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-export default function ObservationsPage() {
-  const observations = listObservations();
+export default async function ObservationsPage() {
+  const observations = await listObservations();
 
   return (
     <>

@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     if (!body.result) {
       return Response.json({ ok: false, error: "缺少 result" }, { status: 400 });
     }
-    const { researchId, version } = saveResearch(body.result);
+    const { researchId, version } = await saveResearch(body.result);
     return Response.json({ ok: true, researchId, version });
   } catch (e) {
     return Response.json(

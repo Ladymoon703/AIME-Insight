@@ -13,14 +13,14 @@ export async function POST(request: Request) {
     if (!body.id) {
       return Response.json({ ok: false, error: "缺少 id" }, { status: 400 });
     }
-    const obs = getObservation(body.id);
+    const obs = await getObservation(body.id);
     if (!obs) {
       return Response.json(
         { ok: false, error: "未找到该观察" },
         { status: 404 },
       );
     }
-    const old = getLatestSnapshot(obs.researchId);
+    const old = await getLatestSnapshot(obs.researchId);
     if (!old) {
       return Response.json(
         { ok: false, error: "该观察尚无对应的已保存研究" },
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     });
 
     const checkedAt = new Date().toISOString();
-    updateObservationCheck(body.id, {
+    await updateObservationCheck(body.id, {
       changesSummary: explained.summary,
       changeCount: changes.length,
       checkedAt,

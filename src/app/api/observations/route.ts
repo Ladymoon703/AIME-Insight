@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const observation = createObservation({
+    const observation = await createObservation({
       researchId: body.researchId,
       thscode: body.thscode,
       companyName: body.companyName,

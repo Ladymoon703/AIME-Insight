@@ -90,80 +90,80 @@ function makeResult(
 }
 
 // 1. Research State create/read
-test("保存研究后可读取最新快照", () => {
+test("保存研究后可读取最新快照", async () => {
   const thscode = "300001.SZ";
-  const { researchId } = saveResearch(makeResult(thscode, 100, "目标A"));
-  const latest = getLatestSnapshot(researchId);
+  const { researchId } = await saveResearch(makeResult(thscode, 100, "目标A"));
+  const latest = await getLatestSnapshot(researchId);
   assert.ok(latest);
   assert.equal(latest!.evidence.facts[0].value, 100);
-  assert.equal(listResearches().length, 1);
+  assert.equal((await listResearches()).length, 1);
 });
 
 // 2. 相同 thscode + 相同 goal → 同一 research，版本递增
-test("相同 thscode + 相同 goal 复用同一 Research", () => {
+test("相同 thscode + 相同 goal 复用同一 Research", async () => {
   const thscode = "300002.SZ";
-  const r1 = saveResearch(makeResult(thscode, 100, "目标A"));
-  const r2 = saveResearch(makeResult(thscode, 200, "目标A"));
+  const r1 = await saveResearch(makeResult(thscode, 100, "目标A"));
+  const r2 = await saveResearch(makeResult(thscode, 200, "目标A"));
   assert.equal(r1.researchId, r2.researchId);
   assert.equal(r2.version, 2);
-  assert.equal(getLatestSnapshot(r1.researchId)!.evidence.facts[0].value, 200);
+  assert.equal((await getLatestSnapshot(r1.researchId))!.evidence.facts[0].value, 200);
 });
 
 // 3. 相同 thscode + 不同 goal → 创建两个 Research
-test("相同 thscode + 不同 goal 创建两个 Research", () => {
+test("相同 thscode + 不同 goal 创建两个 Research", async () => {
   const thscode = "300003.SZ";
-  const a = saveResearch(makeResult(thscode, 100, "目标A"));
-  const b = saveResearch(makeResult(thscode, 100, "目标B"));
+  const a = await saveResearch(makeResult(thscode, 100, "目标A"));
+  const b = await saveResearch(makeResult(thscode, 100, "目标B"));
   assert.notEqual(a.researchId, b.researchId);
-  assert.equal(listResearches().filter((r) => r.thscode === thscode).length, 2);
+  assert.equal((await listResearches()).filter((r) => r.thscode === thscode).length, 2);
 });
 
 // 4. 两个 Research 各自独立版本号
-test("两个 Research 各自独立版本号", () => {
+test("两个 Research 各自独立版本号", async () => {
   const thscode = "300004.SZ";
-  const a = saveResearch(makeResult(thscode, 1, "目标A"));
-  saveResearch(makeResult(thscode, 2, "目标A")); // A -> v2
-  const b = saveResearch(makeResult(thscode, 3, "目标B")); // B -> v1
-  assert.equal(getResearchVersions(a.researchId).length, 2);
-  assert.equal(getResearchVersions(b.researchId).length, 1);
-  assert.equal(getResearchVersions(b.researchId)[0].version, 1);
+  const a = await saveResearch(makeResult(thscode, 1, "目标A"));
+  await saveResearch(makeResult(thscode, 2, "目标A")); // A -> v2
+  const b = await saveResearch(makeResult(thscode, 3, "目标B")); // B -> v1
+  assert.equal((await getResearchVersions(a.researchId)).length, 2);
+  assert.equal((await getResearchVersions(b.researchId)).length, 1);
+  assert.equal((await getResearchVersions(b.researchId))[0].version, 1);
 });
 
 // 5. Evidence snapshot 不可变
-test("Evidence snapshot 不可变", () => {
+test("Evidence snapshot 不可变", async () => {
   const thscode = "300005.SZ";
-  const a = saveResearch(makeResult(thscode, 111, "目标A"));
-  saveResearch(makeResult(thscode, 222, "目标A"));
-  const { old, new: latest } = getLastTwoSnapshots(a.researchId);
+  const a = await saveResearch(makeResult(thscode, 111, "目标A"));
+  await saveResearch(makeResult(thscode, 222, "目标A"));
+  const { old, new: latest } = await getLastTwoSnapshots(a.researchId);
   assert.ok(old);
   assert.equal(old!.evidence.facts[0].value, 111);
   assert.equal(latest!.evidence.facts[0].value, 222);
 });
 
 // 6. Research version history
-test("研究版本历史列表", () => {
+test("研究版本历史列表", async () => {
   const thscode = "300006.SZ";
-  const a = saveResearch(makeResult(thscode, 1, "目标A"));
-  saveResearch(makeResult(thscode, 2, "目标A"));
-  const versions = getResearchVersions(a.researchId);
+  const a = await saveResearch(makeResult(thscode, 1, "目标A"));
+  await saveResearch(makeResult(thscode, 2, "目标A"));
+  const versions = await getResearchVersions(a.researchId);
   assert.equal(versions.length, 2);
   assert.equal(versions[0].version, 2);
 });
 
 // 7. 非法 Evidence ID 拒绝写入
-test("非法 Evidence ID 拒绝写入", () => {
+test("非法 Evidence ID 拒绝写入", async () => {
   const r = makeResult("300007.SZ", 1, "目标A", "ev_ok");
   r.dimensionInsights[0].supportingEvidenceIds = ["ev_not_exist"];
-  assert.throws(() => saveResearch(r), /非法 Evidence ID/);
+  await assert.rejects(() => saveResearch(r), /非法 Evidence ID/);
 });
 
 // 8. Observation 关联 researchId
-test("Observation 正确关联对应 researchId", () => {
+test("Observation 正确关联对应 researchId", async () => {
   const thscode = "300008.SZ";
-  const a = saveResearch(makeResult(thscode, 1, "盈利质量观察"));
-  const b = saveResearch(makeResult(thscode, 2, "估值观察"));
+  const a = await saveResearch(makeResult(thscode, 1, "盈利质量观察"));
+  const b = await saveResearch(makeResult(thscode, 2, "估值观察"));
 
-  const obsA = createObservation({
+  const obsA = await createObservation({
     researchId: a.researchId,
     thscode,
     companyName: "测试公司",
@@ -175,14 +175,14 @@ test("Observation 正确关联对应 researchId", () => {
   assert.equal(obsA.researchId, a.researchId);
   assert.notEqual(obsA.researchId, b.researchId);
 
-  updateObservationCheck(obsA.id, {
+  await updateObservationCheck(obsA.id, {
     changesSummary: "无明显变化",
     changeCount: 0,
     checkedAt: new Date().toISOString(),
   });
-  const got = getObservation(obsA.id);
+  const got = await getObservation(obsA.id);
   assert.ok(got);
   assert.equal(got!.researchId, a.researchId);
   assert.equal((got!.lastResult as { changesSummary: string }).changesSummary, "无明显变化");
-  assert.equal(listObservations().length, 1);
+  assert.equal((await listObservations()).length, 1);
 });
