@@ -240,7 +240,6 @@ export function mockIndicators(
   const isCATL = thscode === "300750.SZ";
   const revenueYoY = isCATL ? 19.7 : 12.5;
   const netProfitYoY = isCATL ? 23.8 : 15.2;
-  const cashFlowYoY = isCATL ? 4.7 : 8.0; // 现金流几乎走平
   // 净利润现金含量：与扶摇真实口径一致（百分比 = 经营现金流净额 / 归母净利润 × 100）
   const fin = mockFinancials(thscode);
   const latest = fin[fin.length - 1];
@@ -251,9 +250,9 @@ export function mockIndicators(
   return {
     report,
     growth: {
-      operating_income_yoy_growth_ratio: revenueYoY,
-      net_profit_yoy_growth_ratio: netProfitYoY,
-      operating_profit_yoy_growth_ratio: netProfitYoY - 1.5,
+      calculate_operating_income_yoy_growth_ratio: revenueYoY,
+      calculate_parent_holder_net_profit_yoy_growth_ratio: netProfitYoY,
+      calculate_operating_profit_yoy_growth_ratio: netProfitYoY - 1.5,
       total_assets_growth_ratio: 8.4,
     },
     profitability: {
@@ -277,7 +276,6 @@ export function mockIndicators(
     },
     cashFlow: {
       net_profit_cash_content: cashContentPct,
-      operating_cash_net_yoy_growth_ratio: cashFlowYoY,
       cash_operating_index: 0.95,
       operating_cash_flow_net_divide_income: isCATL ? 0.15 : 0.4,
     },
@@ -310,7 +308,7 @@ export function mockPeers(thscode: string): Peer[] {
       ticker: meta.ticker,
       name: meta.name,
       roe: selfInd.profitability.index_weighted_avg_roe,
-      revenueGrowth: selfInd.growth.operating_income_yoy_growth_ratio,
+      revenueGrowth: selfInd.growth.calculate_operating_income_yoy_growth_ratio,
       netMargin: selfInd.profitability.sale_net_interest_ratio,
       peTtm: self.peTtm,
       intervalReturn: -8.2,

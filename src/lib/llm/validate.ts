@@ -40,8 +40,11 @@ export function collectAllowedNumbers(evidence: Evidence[]): number[] {
 }
 
 export function isAllowedNumber(n: number, allowed: number[]): boolean {
+  // 按绝对值溯源：LLM 可能用「下降 1.95%」表达负值（负号在词里而非数字前），
+  // 数字来源校验只关心量级是否来自 Evidence，不纠结正负号。
+  const absN = Math.abs(n);
   return allowed.some(
-    (a) => Math.abs(a - n) <= Math.max(Math.abs(a), Math.abs(n)) * 0.01 + 0.01,
+    (a) => Math.abs(Math.abs(a) - absN) <= Math.max(Math.abs(a), absN) * 0.01 + 0.01,
   );
 }
 

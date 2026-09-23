@@ -166,7 +166,7 @@ export function createDataSource(): DataSource {
               );
               roe = ind.profitability.index_weighted_avg_roe ?? null;
               revenueGrowth =
-                ind.growth.operating_income_yoy_growth_ratio ?? null;
+                ind.growth.calculate_operating_income_yoy_growth_ratio ?? null;
               netMargin = ind.profitability.sale_net_interest_ratio ?? null;
             }
           } catch {

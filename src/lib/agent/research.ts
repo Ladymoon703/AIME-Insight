@@ -55,6 +55,23 @@ function reportFromPeriod(p: FinancialPeriod): string {
   return `${p.fiscalYear}-${q}`;
 }
 
+/** 从财报多期序列计算同比增速（最新报告期 vs 去年同期），用于指标接口缺失口径时的兜底 */
+function yoyGrowth(
+  periods: FinancialPeriod[],
+  pick: (p: FinancialPeriod) => number | null,
+): number | null {
+  if (periods.length === 0) return null;
+  const latest = periods[periods.length - 1];
+  const prev = periods.find(
+    (p) => p.fiscalYear === latest.fiscalYear - 1 && p.fiscalPeriod === latest.fiscalPeriod,
+  );
+  if (!prev) return null;
+  const a = pick(latest);
+  const b = pick(prev);
+  if (a == null || b == null || b === 0) return null;
+  return ((a - b) / Math.abs(b)) * 100;
+}
+
 interface IndicatorsSnapshot {
   revenueYoY: number | null;
   netProfitYoY: number | null;
@@ -63,6 +80,9 @@ interface IndicatorsSnapshot {
   netMargin: number | null;
   roe: number | null;
   netProfitCashContent: number | null;
+  assetDebtRatio: number | null;
+  currentRatio: number | null;
+  totalAssetTurnover: number | null;
 }
 
 function snapshot(indicators: FinancialIndicatorReport | null): IndicatorsSnapshot {
@@ -75,16 +95,23 @@ function snapshot(indicators: FinancialIndicatorReport | null): IndicatorsSnapsh
       netMargin: null,
       roe: null,
       netProfitCashContent: null,
+      assetDebtRatio: null,
+      currentRatio: null,
+      totalAssetTurnover: null,
     };
   }
   return {
-    revenueYoY: indicators.growth.operating_income_yoy_growth_ratio ?? null,
-    netProfitYoY: indicators.growth.net_profit_yoy_growth_ratio ?? null,
-    cashFlowYoY: indicators.cashFlow.operating_cash_net_yoy_growth_ratio ?? null,
+    // 注意：扶摇真实接口的 index_id 带 calculate_ 前缀，且净利润同比取「归母净利润」口径
+    revenueYoY: indicators.growth.calculate_operating_income_yoy_growth_ratio ?? null,
+    netProfitYoY: indicators.growth.calculate_parent_holder_net_profit_yoy_growth_ratio ?? null,
+    cashFlowYoY: null, // 经营现金流同比：指标接口无此口径，从财报多期序列计算
     grossMargin: indicators.profitability.sale_gross_margin ?? null,
     netMargin: indicators.profitability.sale_net_interest_ratio ?? null,
     roe: indicators.profitability.index_weighted_avg_roe ?? null,
     netProfitCashContent: indicators.cashFlow.net_profit_cash_content ?? null,
+    assetDebtRatio: indicators.solvency.assets_debt_ratio ?? null,
+    currentRatio: indicators.solvency.current_ratio ?? null,
+    totalAssetTurnover: indicators.operation.total_assets_turnover_ratio ?? null,
   };
 }
 
@@ -136,6 +163,10 @@ export async function runResearch(input: {
     indicators = indRes.data?.[0] ?? null;
   }
   const ind = snapshot(indicators);
+  // 经营现金流同比：指标接口无此口径，从财报序列计算；营收/净利润同比在指标缺失时同样兜底
+  ind.cashFlowYoY = yoyGrowth(periods, (p) => p.actCashFlowNet);
+  if (ind.revenueYoY == null) ind.revenueYoY = yoyGrowth(periods, (p) => p.operatingIncome);
+  if (ind.netProfitYoY == null) ind.netProfitYoY = yoyGrowth(periods, (p) => p.parentHolderNetProfit ?? p.netProfit);
 
   const bars = histRes?.data ?? [];
   const closes = bars.map((b) => b.close);
@@ -144,6 +175,7 @@ export async function runResearch(input: {
   const priceReturnPct = calculateReturn(closes);
   const maxDrawdownPct = calculateMaxDrawdown(closes);
   const volatilityPct = calculateVolatility(closes);
+  const revenueTrend = calculateTrend(periods.map((p) => p.operatingIncome));
   const netProfitTrend = calculateTrend(periods.map((p) => p.netProfit));
   const cashFlowTrend = calculateTrend(periods.map((p) => p.actCashFlowNet));
 
@@ -161,6 +193,9 @@ export async function runResearch(input: {
     hasEvents: has("events"),
     eventsAvailable: (eventRes?.data?.length ?? 0) > 0,
     latestPeriod,
+    revenueTrend,
+    netProfitTrend,
+    cashFlowTrend,
   });
 
   // ---- 4. 背离检测 ----
@@ -300,6 +335,9 @@ interface EvidenceInput {
   hasEvents: boolean;
   eventsAvailable: boolean;
   latestPeriod: string | null;
+  revenueTrend: "up" | "down" | "flat" | "unknown";
+  netProfitTrend: "up" | "down" | "flat" | "unknown";
+  cashFlowTrend: "up" | "down" | "flat" | "unknown";
 }
 
 function buildEvidence(input: EvidenceInput): {
@@ -377,6 +415,18 @@ function buildEvidence(input: EvidenceInput): {
         period: null, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "pb_mrq",
       }));
     }
+    if (v.psTtm != null) {
+      push(createEvidence({
+        dimension: "valuation", metric: "ps_ttm", label: "PS-TTM", value: v.psTtm, unit: "倍",
+        period: null, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "ps_ttm",
+      }));
+    }
+    if (v.pcfTtm != null) {
+      push(createEvidence({
+        dimension: "valuation", metric: "pcf_ttm", label: "PCF-TTM", value: v.pcfTtm, unit: "倍",
+        period: null, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "pcf_ttm",
+      }));
+    }
   }
 
   // 行情事实
@@ -394,6 +444,51 @@ function buildEvidence(input: EvidenceInput): {
       evidenceClass: input.maxDrawdownPct > 20 ? "negative" : "positive", rawField: "close_price",
     }));
   }
+
+  // 偿债 / 运营 / 财务结构事实（中性，仅陈述事实）
+  if (input.ind.assetDebtRatio != null) {
+    push(createEvidence({
+      dimension: "financial_trend", metric: "assets_debt_ratio", label: "资产负债率", value: input.ind.assetDebtRatio, unit: "%",
+      period, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "assets_debt_ratio",
+    }));
+  }
+  if (input.ind.currentRatio != null) {
+    push(createEvidence({
+      dimension: "financial_trend", metric: "current_ratio", label: "流动比率", value: input.ind.currentRatio, unit: "",
+      period, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "current_ratio",
+    }));
+  }
+  if (input.ind.totalAssetTurnover != null) {
+    push(createEvidence({
+      dimension: "financial_trend", metric: "total_assets_turnover_ratio", label: "总资产周转率", value: input.ind.totalAssetTurnover, unit: "",
+      period, source: input.src, factKind: "fact", evidenceClass: "neutral", rawField: "total_assets_turnover_ratio",
+    }));
+  }
+
+  // 多期趋势事实（来自财报序列）
+  const trendMeta: Record<string, { label: string; cls: "positive" | "negative" | "neutral" | "unknown" }> = {
+    up: { label: "上升", cls: "positive" },
+    down: { label: "下降", cls: "negative" },
+    flat: { label: "持平", cls: "neutral" },
+    unknown: { label: "无法判断", cls: "unknown" },
+  };
+  const pushTrend = (
+    dimension: string,
+    metric: string,
+    label: string,
+    trend: "up" | "down" | "flat" | "unknown",
+    rawField: string,
+  ) => {
+    if (trend === "unknown") return;
+    const m = trendMeta[trend];
+    push(createEvidence({
+      dimension, metric, label, value: m.label, unit: "", period, source: input.src,
+      factKind: "fact", evidenceClass: m.cls, method: "deterministic", rawField,
+    }));
+  };
+  pushTrend("financial_trend", "operating_income_trend", "营收多期趋势", input.revenueTrend, "operating_income");
+  pushTrend("financial_trend", "net_profit_trend", "净利润多期趋势", input.netProfitTrend, "net_profit");
+  pushTrend("profit_quality", "cash_flow_trend", "经营现金流多期趋势", input.cashFlowTrend, "act_cash_flow_net");
 
   // 矛盾证据：利润上行但现金流走平/下行
   if (

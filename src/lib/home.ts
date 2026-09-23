@@ -3,7 +3,7 @@
  * 今日值得研究是「研究触发器」而非新闻流，核心结构 = 变化 + 关键数字 + 为什么 + 研究入口。
  * 当前为演示数据（明确标识），真实监控能力在 Phase 5 / P2。
  */
-import { mockQuote, mockIndicators, mockValuation } from "@/lib/data/mock";
+import { mockQuote, mockIndicators, mockValuation, mockFinancials } from "@/lib/data/mock";
 
 export interface QuickTask {
   title: string;
@@ -62,6 +62,15 @@ function pct(v: number | null): string {
 
 export function getTodayWorthResearching(): WorthResearchingCard[] {
   const catl = mockIndicators("300750.SZ", "2026-2");
+  const catlFin = mockFinancials("300750.SZ");
+  const catlLatest = catlFin[catlFin.length - 1];
+  const catlPrev = catlFin.find(
+    (p) => p.fiscalYear === catlLatest.fiscalYear - 1 && p.fiscalPeriod === catlLatest.fiscalPeriod,
+  );
+  const catlCfYoY =
+    catlLatest && catlPrev && catlLatest.actCashFlowNet != null && catlPrev.actCashFlowNet != null && catlPrev.actCashFlowNet !== 0
+      ? ((catlLatest.actCashFlowNet - catlPrev.actCashFlowNet) / Math.abs(catlPrev.actCashFlowNet)) * 100
+      : null;
   const moutaiVal = mockValuation("600519.SH");
   const moutaiQuote = mockQuote("600519.SH");
   const bydQuote = mockQuote("002594.SZ");
@@ -73,8 +82,8 @@ export function getTodayWorthResearching(): WorthResearchingCard[] {
       companyName: "宁德时代",
       changeTitle: "盈利与现金流出现分化",
       keyNumbers: [
-        { label: "净利润同比", value: pct(catl.growth.net_profit_yoy_growth_ratio) },
-        { label: "经营现金流同比", value: pct(catl.cashFlow.operating_cash_net_yoy_growth_ratio) },
+        { label: "净利润同比", value: pct(catl.growth.calculate_parent_holder_net_profit_yoy_growth_ratio) },
+        { label: "经营现金流同比", value: pct(catlCfYoY) },
         { label: "近60日", value: pct(-8.2) },
       ],
       why: "利润保持增长，但经营现金流增速明显低于利润增速，盈利质量值得验证。",
